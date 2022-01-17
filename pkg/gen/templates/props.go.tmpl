@@ -1,0 +1,20 @@
+{{ $type := .Type }}
+
+func (i {{ .Type }}) Contains(f {{ .Type }}) bool { return (i & f) == f }
+
+{{ range .Values }}
+func (i {{ $type }}) {{ .Name }}() bool { return i.Contains({{ .Name }}) }
+{{ end }}
+
+func (i {{ .Type }}) String() string {
+    var b strings.Builder
+    {{ range $i, $v := .Values }}
+    if i.{{ .Name }}() {
+        if b.Len() > 0 {
+            b.WriteByte('|')
+        }
+        b.WriteString("{{ .Name }}")
+    }
+    {{ end }}
+    return b.String()
+}

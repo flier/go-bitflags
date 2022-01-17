@@ -1,0 +1,15 @@
+{{ $type := .Type }}
+const _{{ $type }}_name = "{{ range .Values }}{{ .OriginalName }}{{ end }}"
+
+var _{{ .Type }}_map = map[{{ .Type }}]string{
+{{- range .Values }}
+    {{ .Str }}: _{{ $type }}_name[{{ .Start }}:{{ .End }}],
+{{- end }}
+}
+
+func (i {{ .Type }}) Name() string {
+    if str, ok := _{{ .Type }}_map[i]; ok {
+		return str
+	}
+	return "{{ .Type }}(" + strconv.FormatInt(int64(i), 10) + ")"
+}

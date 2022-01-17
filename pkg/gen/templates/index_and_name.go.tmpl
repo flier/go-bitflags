@@ -1,0 +1,49 @@
+{{ $type := .Type }}
+{{ $hasPrefix := len .Runs | ne 1 }}
+
+const (
+{{ range $i, $v := .Runs }}
+    _{{ $type }}_name{{ if $hasPrefix }}_{{ $i }}{{ end }} = "{{ range $v }}{{ .OriginalName }}{{ end -}}"
+{{- end }}
+)
+
+{{ with .Indexes }}
+var (
+{{- range $i, $v := . }}
+{{- if $v }}
+    _{{ $type }}_index{{ if $hasPrefix }}_{{ $i }}{{ end }} = [...]uint{ 0{{ range $j, $off := $v }}, {{ $off }}{{ end }} }
+{{- end }}
+{{- end }}
+)
+{{ end }}
+
+func (i {{ .Type }}) Name() string {
+{{- if len .Runs | eq 1 }}
+    {{- $v := index .Runs 0 0 }}
+    {{ with $v }}{{ if ne .Value 0 }}i -= {{ .Str }}{{ end }}{{ end -}}
+	if {{ with $v }}{{ if .Signed }}i < 0 || {{ end }}{{ end }}i >= {{ .Type }}(len(_{{ .Type }}_index)-1) {
+		return "{{ .Type }}(" + strconv.FormatInt(int64(i{{ with $v }}{{ if ne .Value 0 }} + {{ .Str }}{{ end }}{{ end }}), 10) + ")"
+	}
+	return _{{ .Type }}_name[_{{ .Type }}_index[i] : _{{ .Type }}_index[i+1]]
+{{- else }}
+    switch {
+    {{- range $i, $v := .Runs }}
+    {{-   $e := index $v 0}}
+    {{-   if len $v | eq 1 }}
+    case i == {{ $e.Value }}:
+        return _{{ $type }}_name_{{ $i }}
+    {{-   else }}
+    {{-     $hasOffset := gt $e.Value 0 }}
+    {{-     if not $e.Signed | and $hasOffset  }}
+    case i <= {{ with $v | last }}{{ .Value }}{{ end }}:
+        {{ if $hasOffset }}i -= {{ $e.Value }}{{ end }}
+        return _{{ $type }}_name_{{ $i }}[_{{ $type }}_index_{{ $i }}[i] : _{{ $type }}_index_{{ $i }}[i+1]]
+    {{-     else }}
+    {{-     end }}
+    {{-   end }}
+    {{- end }}
+    default:
+        return "{{ .Type }}(" + strconv.FormatInt(int64(i), 10) + ")"
+    }
+{{- end }}
+}
