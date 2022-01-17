@@ -13,10 +13,10 @@ defines T. It has helpful defaults designed for use with go generate.
 ## Installation
 
     # Go 1.16+
-    go install github.com/flier/go-bitflags@latest
+    go install github.com/flier/go-bitflags/cmd/bitflags@latest
 
     # Go version < 1.16
-    go get -u github.com/flier/go-bitflags@latest
+    go get -u github.com/flier/go-bitflags/cmd/bitflags@latest
 
 ## Usage
 
