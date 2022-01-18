@@ -1,11 +1,17 @@
 # go-bitflags
 
 Bitflags is a tool to automate the creation of methods that satisfy the
-fmt.Stringer interface. Given the name of a (signed or unsigned) integer
+`Bitflags` interface. Given the name of a (signed or unsigned) integer
 type T that has constants defined, bitflags will create a new self-contained
 Go source file implementing
 
+    func (t T) Name() string
+
     func (t T) String() string
+
+    func (t T) Contains(f T) bool
+
+    func (t T) <Flag>() bool
 
 The file is created in the same package and directory as the package that
 defines T. It has helpful defaults designed for use with go generate.
@@ -32,11 +38,11 @@ For example, given this snippet,
     type Pill int
 
     const (
-    	Placebo Pill = 1 << iota
-    	Aspirin
-    	Ibuprofen
-    	Paracetamol
-    	Acetaminophen = Paracetamol
+        Placebo Pill = 1 << iota
+        Aspirin
+        Ibuprofen
+        Paracetamol
+        Acetaminophen = Paracetamol
     )
 ```
 
@@ -55,6 +61,8 @@ painkiller, containing a definition
     func (Pill) String() string
 
     // Whether the flag bit is set
+    func (Pill) Contains(Pill) bool
+
     func (Pill) Placebo() bool
     func (Pill) Aspirin() bool
     func (Pill) Ibuprofen() bool
@@ -91,4 +99,12 @@ instance, if the constants above had a Pill prefix, one could write
 
 to suppress it in the output.
 
-See https://github.com/flier/go-bitflags for more information and more examples.
+## License
+
+This project is licensed under either of Apache-2.0 License ([LICENSE-APACHE](LICENSE-APACHE)) or MIT license ([LICENSE-MIT](LICENSE-MIT)) at your option.
+
+## Contribution
+
+Unless you explicitly state otherwise, any contribution intentionally submitted
+for inclusion in Futures by you, as defined in the Apache-2.0 license, shall be
+dual licensed as above, without any additional terms or conditions.
