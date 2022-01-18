@@ -132,8 +132,10 @@ func (g *Generator) Generate(typeName string) (err error) {
 // splitIntoRuns breaks the values into runs of contiguous sequences.
 // For example, given 1,2,3,5,6,7 it returns {1,2,3},{5,6,7}.
 // The input slice is known to be non-empty.
-func splitIntoRuns(values []Value) [][]Value {
+func splitIntoRuns(v []Value) [][]Value {
 	// We use stable sort so the lexically first name is chosen for equal elements.
+	values := make([]Value, len(v))
+	copy(values, v)
 	sort.Stable(byValue(values))
 	// Remove duplicates. Stable sort has put the one we want to print first,
 	// so use that one. The String method won't care about which named constant
