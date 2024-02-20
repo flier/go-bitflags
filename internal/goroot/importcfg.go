@@ -12,6 +12,7 @@ package goroot
 import (
 	"bytes"
 	"fmt"
+	"log"
 	"os/exec"
 	"strings"
 	"sync"
@@ -57,7 +58,7 @@ func PkgfileMap() (map[string]string, error) {
 			}
 			sp := strings.SplitN(line, " ", 2)
 			if len(sp) != 2 {
-				err = fmt.Errorf("determining pkgfile map: invalid line in go list output: %q", line)
+				log.Fatalf("determining pkgfile map: invalid line in go list output: %q", line)
 				return
 			}
 			importPath, export := sp[0], sp[1]

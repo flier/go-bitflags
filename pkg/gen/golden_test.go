@@ -61,7 +61,9 @@ func TestGolden(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			g.ParsePackage([]string{absFile}, nil)
+			if err = g.ParsePackage([]string{absFile}, nil); err != nil {
+				t.Fatal(err)
+			}
 
 			if err = g.Generate(test.typeName); err != nil {
 				t.Fatal(err)

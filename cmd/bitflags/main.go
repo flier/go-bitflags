@@ -116,7 +116,9 @@ func main() {
 		log.Fatalf("fail to parse package, %v", err)
 	}
 
-	g.GenerateHeader()
+	if err := g.GenerateHeader(); err != nil {
+		log.Fatalf("fail to generate header, %v", err)
+	}
 
 	// Run generate for each type.
 	for _, s := range c.Types {
@@ -158,10 +160,12 @@ func main() {
 
 func summary() string {
 	var b strings.Builder
-	template.Must(template.New("summary").Parse(`
+	if err := template.Must(template.New("summary").Parse(`
     {{ .Name }} [flags] -type T [directory]
     {{ .Name }} [flags] -type T files... # Must be a single package
-`)).Execute(&b, map[string]interface{}{"Name": prog})
+`)).Execute(&b, map[string]interface{}{"Name": prog}); err != nil {
+		log.Fatal(err)
+	}
 	return strings.Trim(b.String(), "\n")
 }
 
