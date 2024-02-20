@@ -1,5 +1,9 @@
 # go-bitflags
 
+[![Go](https://github.com/flier/go-bitflags/actions/workflows/go.yml/badge.svg)](https://github.com/flier/go-bitflags/actions/workflows/go.yml)
+[![Report Card](https://goreportcard.com/badge/flier/go-bitflags)](https://goreportcard.com/report/flier/go-bitflags)
+[![GoDoc](https://pkg.go.dev/badge/flier/go-bitflags.svg)](https://pkg.go.dev/flier/go-bitflags)
+
 Bitflags is a tool to automate the creation of methods that satisfy the
 `Bitflags` interface. Given the name of a (signed or unsigned) integer
 type T that has constants defined, bitflags will create a new self-contained
@@ -18,10 +22,10 @@ defines T. It has helpful defaults designed for use with go generate.
 
 ## Installation
 
-    # Go 1.16+
+    # Go 1.18+
     go install github.com/flier/go-bitflags/cmd/bitflags@latest
 
-    # Go version < 1.16
+    # Go version < 1.18
     go get -u github.com/flier/go-bitflags/cmd/bitflags@latest
 
 ## Usage
