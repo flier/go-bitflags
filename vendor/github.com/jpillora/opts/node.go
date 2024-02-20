@@ -5,25 +5,27 @@ import (
 	"reflect"
 )
 
-//node is the main class, it contains
-//all parsing state for a single set of
-//arguments
+// node is the main class, it contains
+// all parsing state for a single set of
+// arguments
 type node struct {
 	err error
 	//embed item since an node can also be an item
 	item
-	parent      *node
-	flagGroups  []*itemGroup
-	flagNames   map[string]bool //flag namespace covers all groups in this node
-	args        []*item
-	envNames    map[string]bool
-	userCfgPath bool
+	parent        *node
+	flagGroups    []*itemGroup
+	flagNames     map[string]bool //flag namespace covers all groups in this node
+	flagSkipShort map[string]bool
+	args          []*item
+	envNames      map[string]bool
+	userCfgPath   bool
 	//external flagsets
 	flagsets []*flag.FlagSet
 	//subcommands
-	cmd     *node
-	cmdname *string
-	cmds    map[string]*node
+	cmd        *node
+	cmdname    *string
+	cmdnameEnv string
+	cmds       map[string]*node
 	//help
 	order                          []string
 	templates                      map[string]string
@@ -47,9 +49,10 @@ func newNode(val reflect.Value) *node {
 	n := &node{
 		parent: nil,
 		//each cmd/cmd has its own set of names
-		flagNames: map[string]bool{},
-		envNames:  map[string]bool{},
-		cmds:      map[string]*node{},
+		flagNames:     map[string]bool{},
+		flagSkipShort: map[string]bool{},
+		envNames:      map[string]bool{},
+		cmds:          map[string]*node{},
 		//these are only set at the root
 		order:     defaultOrder(),
 		templates: map[string]string{},

@@ -13,15 +13,15 @@ import (
 	"strings"
 )
 
-//Parse with os.Args
+// Parse with os.Args
 func (n *node) Parse() ParsedOpts {
 	return n.ParseArgs(os.Args)
 }
 
-//ParseArgs with the provided arguments and os.Exit on
-//any parse failure, or when handling shell completion.
-//Use ParseArgsError if you need to handle failure in
-//your application.
+// ParseArgs with the provided arguments and os.Exit on
+// any parse failure, or when handling shell completion.
+// Use ParseArgsError if you need to handle failure in
+// your application.
 func (n *node) ParseArgs(args []string) ParsedOpts {
 	o, err := n.ParseArgsError(args)
 	if err != nil {
@@ -36,14 +36,14 @@ func (n *node) ParseArgs(args []string) ParsedOpts {
 			os.Exit(1)
 		}
 		//unexpected exit (1) embed message in help to user
-		fmt.Fprintf(os.Stderr, n.Help())
+		fmt.Fprint(os.Stderr, n.Help())
 		os.Exit(1)
 	}
 	//success
 	return o
 }
 
-//ParseArgsError with the provided arguments
+// ParseArgsError with the provided arguments
 func (n *node) ParseArgsError(args []string) (ParsedOpts, error) {
 	//shell-completion?
 	if cl := os.Getenv("COMP_LINE"); n.complete && cl != "" {
@@ -67,8 +67,8 @@ func (n *node) ParseArgsError(args []string) (ParsedOpts, error) {
 	return n, nil
 }
 
-//parse validates and initialises all internal items
-//and then passes the args through, setting them items required
+// parse validates and initialises all internal items
+// and then passes the args through, setting them items required
 func (n *node) parse(args []string) error {
 	//return the stored error
 	if n.err != nil {
@@ -113,7 +113,7 @@ func (n *node) parse(args []string) error {
 	n.setPkgDefaults()
 	//add shortnames where possible
 	for _, item := range n.flags() {
-		if item.shortName == "" && len(item.name) >= 2 {
+		if !n.flagSkipShort[item.name] && item.shortName == "" && len(item.name) >= 2 {
 			if s := item.name[0:1]; !n.flagNames[s] {
 				item.shortName = s
 				n.flagNames[s] = true
@@ -125,7 +125,7 @@ func (n *node) parse(args []string) error {
 	flagset.SetOutput(ioutil.Discard)
 	for _, item := range n.flags() {
 		flagset.Var(item, item.name, "")
-		if sn := item.shortName; sn != "" {
+		if sn := item.shortName; sn != "" && sn != "-" {
 			flagset.Var(item, sn, "")
 		}
 	}
@@ -144,7 +144,7 @@ func (n *node) parse(args []string) error {
 	} else if n.internalOpts.Uninstall {
 		return n.manageCompletion(true)
 	}
-	//first round of defaults, applying env variables where necesseary
+	//first round of defaults, applying env variables where necessary
 	for _, item := range n.flags() {
 		k := item.envName
 		if item.set() || k == "" {
@@ -166,7 +166,7 @@ func (n *node) parse(args []string) error {
 			v := n.val.Addr().Interface() //*struct
 			err = json.Unmarshal(b, v)
 			if err != nil {
-				return fmt.Errorf("Invalid config file: %s", err)
+				return fmt.Errorf("invalid config file: %s", err)
 			}
 		}
 	}
@@ -204,32 +204,64 @@ func (n *node) parse(args []string) error {
 		}
 	}
 	//use command? next arg can optionally match command
-	if len(n.cmds) > 0 && len(remaining) > 0 {
-		a := remaining[0]
-		//matching command, use it
-		if sub, exists := n.cmds[a]; exists {
-			//store matched command
-			n.cmd = sub
-			//user wants command name to be set on their struct?
-			if n.cmdname != nil {
-				*n.cmdname = a
+	if len(n.cmds) > 0 {
+		// use next arg as command
+		args := remaining
+		cmd := ""
+		must := false
+		if len(args) > 0 {
+			cmd = args[0]
+			args = args[1:]
+		}
+		// fallback to pre-initialised cmdname
+		if cmd == "" {
+			if n.cmdnameEnv != "" && os.Getenv(n.cmdnameEnv) != "" {
+				cmd = os.Getenv(n.cmdnameEnv)
+			} else if n.cmdname != nil && *n.cmdname != "" {
+				cmd = *n.cmdname
 			}
-			//tail recurse! if only...
-			return sub.parse(remaining[1:])
+			must = true
+		}
+		//matching command
+		if cmd != "" {
+			sub, exists := n.cmds[cmd]
+			if must && !exists {
+				return fmt.Errorf("command '%s' does not exist", cmd)
+			}
+			if exists {
+				//store matched command
+				n.cmd = sub
+				//user wants command name to be set on their struct?
+				if n.cmdname != nil {
+					*n.cmdname = cmd
+				}
+				//tail recurse! if only...
+				return sub.parse(args)
+			}
 		}
 	}
 	//we *should* have consumed all args at this point.
 	//this prevents:  ./foo --bar 42 -z 21 ping --pong 7
 	//where --pong 7 is ignored
 	if len(remaining) != 0 {
-		return fmt.Errorf("Unexpected arguments: %s", strings.Join(remaining, " "))
+		return fmt.Errorf("unexpected arguments: %s", strings.Join(remaining, " "))
 	}
 	return nil
 }
 
 func (n *node) addStructFields(group string, sv reflect.Value) error {
+	if sv.Kind() == reflect.Interface {
+		sv = sv.Elem()
+	}
+	if sv.Kind() == reflect.Ptr {
+		sv = sv.Elem()
+	}
 	if sv.Kind() != reflect.Struct {
-		return n.errorf("opts: %s should be a pointer to a struct (got %s)", sv.Type().Name(), sv.Kind())
+		name := ""
+		if sv.IsValid() {
+			name = sv.Type().Name()
+		}
+		return n.errorf("opts: %s should be a pointer to a struct (got %s)", name, sv.Kind())
 	}
 	for i := 0; i < sv.NumField(); i++ {
 		sf := sv.Type().Field(i)
@@ -301,7 +333,15 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 	if mode == "embedded" {
 		return n.addStructFields(group, val) //recurse!
 	}
+	//special cmdname to define a default command, or
+	//to access the matched command name
 	if mode == "cmdname" {
+		if name, ok := kv.take("env"); ok {
+			if name == "" {
+				name = camel2const(fName)
+			}
+			n.cmdnameEnv = name
+		}
 		return n.setCmdName(val)
 	}
 	//new kv help defs supercede legacy defs
@@ -352,19 +392,21 @@ func (n *node) addKVField(kv *kv, fName, help, mode, group string, val reflect.V
 			}
 		}
 		//cannot have duplicates
-		if n.flagNames[name] {
+		if _, ok := n.flagNames[name]; ok {
 			return n.errorf("flag '%s' already exists", name)
 		}
 		//flags can also set short names
 		if short, ok := kv.take("short"); ok {
-			if len(short) != 1 {
+			if short == "-" {
+				n.flagSkipShort[name] = true
+			} else if len(short) != 1 {
 				return n.errorf("short name '%s' on flag '%s' must be a single character", short, name)
-			}
-			if n.flagNames[short] {
+			} else if _, ok2 := n.flagNames[short]; ok2 {
 				return n.errorf("short name '%s' on flag '%s' already exists", short, name)
+			} else {
+				n.flagNames[short] = true
+				i.shortName = short
 			}
-			n.flagNames[short] = true
-			i.shortName = short
 		}
 		//add to this command's flags
 		n.flagNames[name] = true
@@ -501,7 +543,7 @@ func (n *node) addFlagsets() error {
 			i.defstr = f.DefValue
 			i.help = f.Usage
 			//cannot have duplicates
-			if n.flagNames[i.name] {
+			if _, ok := n.flagNames[i.name]; ok {
 				err = n.errorf("imported flag '%s' already exists", i.name)
 				return
 			}

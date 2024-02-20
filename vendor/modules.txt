@@ -4,7 +4,7 @@ github.com/hashicorp/errwrap
 # github.com/hashicorp/go-multierror v1.1.1
 ## explicit; go 1.13
 github.com/hashicorp/go-multierror
-# github.com/jpillora/opts v1.2.0
+# github.com/jpillora/opts v1.2.3
 ## explicit; go 1.12
 github.com/jpillora/opts
 # github.com/posener/complete v1.2.3

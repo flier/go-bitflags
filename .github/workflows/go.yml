@@ -11,10 +11,10 @@ jobs:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
         go:
-          - 1.18
-          - 1.20
-          - stable
-          - oldstable
+          - "1.18"
+          - "1.20"
+          - "stable"
+          - "oldstable"
     runs-on: ${{ matrix.os }}
     name: Go ${{ matrix.go }} tests @ ${{ matrix.os }}
     steps:
@@ -25,5 +25,7 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
 
+      - run: go mod tidy
+      - run: go mod vendor
       - run: go build -v ./...
       - run: go test -v ./...
