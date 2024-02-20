@@ -19,6 +19,8 @@ jobs:
         with:
           go-version: "stable"
           cache: false
+      - run: go mod tidy
+      - run: go mod vendor          
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v4
         with:
