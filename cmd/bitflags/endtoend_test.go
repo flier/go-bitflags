@@ -109,7 +109,7 @@ func bitflagsCompileAndRun(t *testing.T, dir, executable, typeName, fileName str
 	if err != nil {
 		t.Fatalf("copying file to temporary directory: %s", err)
 	}
-	stringSource := filepath.Join(dir, typeName+"_string.go")
+	stringSource := filepath.Join(dir, typeName+"_bitflags.go")
 	// Run stringer in temporary directory.
 	err = run(t, executable, "-type", typeName, "-output", stringSource, source)
 	if err != nil {
