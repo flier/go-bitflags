@@ -3,6 +3,7 @@ package gen
 import (
 	"bytes"
 	"embed"
+	"errors"
 	"fmt"
 	"go/ast"
 	"go/format"
@@ -25,8 +26,10 @@ var templates = template.Must(template.New("templates").Funcs(template.FuncMap{
 }).ParseFS(content, "templates/*.go.tmpl"))
 
 type Generator struct {
-	bytes.Buffer
-	*Package    // Package we are scanning.
+	buf  bytes.Buffer
+	pkg  *Package                                 // Package we are scanning.
+	logf func(format string, args ...interface{}) // test logging hook; nil when not testing
+
 	TrimPrefix  string
 	LineComment bool
 }
@@ -38,11 +41,17 @@ func New(trimPrefix string, lineComment bool) *Generator {
 	}
 }
 
+var (
+	ErrTooManyPackages = errors.New("too many package")
+)
+
+// ParsePackage analyzes the single package constructed from the patterns and tags.
 func (g *Generator) ParsePackage(patterns []string, tags []string) (err error) {
 	cfg := &packages.Config{
-		Mode:       packages.LoadSyntax,
+		Mode:       packages.NeedName | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedSyntax,
 		Tests:      false,
 		BuildFlags: []string{fmt.Sprintf("-tags=%s", strings.Join(tags, " "))},
+		Logf:       g.logf,
 	}
 
 	pkgs, err := packages.Load(cfg, patterns...)
@@ -52,7 +61,7 @@ func (g *Generator) ParsePackage(patterns []string, tags []string) (err error) {
 	}
 
 	if len(pkgs) != 1 {
-		err = fmt.Errorf("too many package")
+		err = fmt.Errorf("%d packages matching %v, %w", len(pkgs), strings.Join(patterns, " "), ErrTooManyPackages)
 		return
 	}
 
@@ -63,16 +72,16 @@ func (g *Generator) ParsePackage(patterns []string, tags []string) (err error) {
 
 // addPackage adds a type checked Package and its syntax files to the generator.
 func (g *Generator) addPackage(pkg *packages.Package) {
-	g.Package = &Package{
+	g.pkg = &Package{
 		Name:  pkg.Name,
 		Defs:  pkg.TypesInfo.Defs,
 		Files: make([]*File, len(pkg.Syntax)),
 	}
 
 	for i, file := range pkg.Syntax {
-		g.Package.Files[i] = &File{
+		g.pkg.Files[i] = &File{
 			File:        file,
-			Package:     g.Package,
+			Package:     g.pkg,
 			TrimPrefix:  g.TrimPrefix,
 			LineComment: g.LineComment,
 		}
@@ -80,16 +89,16 @@ func (g *Generator) addPackage(pkg *packages.Package) {
 }
 
 func (g *Generator) GenerateHeader() error {
-	return templates.Lookup("header.go.tmpl").Execute(g, map[string]interface{}{
+	return templates.Lookup("header.go.tmpl").Execute(&g.buf, map[string]interface{}{
 		"CmdLine": strings.Join(append([]string{filepath.Base(os.Args[0])}, os.Args[1:]...), " "),
-		"Package": g.Package,
+		"Package": g.pkg,
 	})
 }
 
 // generate produces the String method for the named type.
 func (g *Generator) Generate(typeName string) (err error) {
 	values := make([]Value, 0, 100)
-	for _, file := range g.Package.Files {
+	for _, file := range g.pkg.Files {
 		// Set the state for this run of the walker.
 		file.TypeName = typeName
 		file.Values = nil
@@ -105,7 +114,7 @@ func (g *Generator) Generate(typeName string) (err error) {
 	}
 
 	// Generate code that will fail if the constants change value.
-	if err = templates.Lookup("validate.go.tmpl").Execute(g, values); err != nil {
+	if err = templates.Lookup("validate.go.tmpl").Execute(&g.buf, values); err != nil {
 		return
 	}
 
@@ -119,7 +128,7 @@ func (g *Generator) Generate(typeName string) (err error) {
 		}
 	}
 
-	if err = templates.Lookup("props.go.tmpl").Execute(g, map[string]interface{}{
+	if err = templates.Lookup("props.go.tmpl").Execute(&g.buf, map[string]interface{}{
 		"Type":   typeName,
 		"Values": values,
 	}); err != nil {
@@ -180,7 +189,7 @@ func (g *Generator) declareIndexAndNameVars(runs [][]Value, typeName string) err
 		}
 	}
 
-	return templates.Lookup("index_and_name.go.tmpl").Execute(g, map[string]interface{}{
+	return templates.Lookup("index_and_name.go.tmpl").Execute(&g.buf, map[string]interface{}{
 		"Runs":    runs,
 		"Indexes": indexes,
 		"Type":    typeName,
@@ -201,16 +210,16 @@ func (g *Generator) declareMapAndNameVars(values []Value, typeName string) error
 		off += len(v.OriginalName)
 	}
 
-	return templates.Lookup("map_and_name.go.tmpl").Execute(g, map[string]interface{}{
+	return templates.Lookup("map_and_name.go.tmpl").Execute(&g.buf, map[string]interface{}{
 		"Values": _values,
 		"Type":   typeName,
 	})
 }
 
 func (g *Generator) Format() []byte {
-	src, err := format.Source(g.Buffer.Bytes())
+	src, err := format.Source(g.buf.Bytes())
 	if err != nil {
-		return g.Buffer.Bytes()
+		return g.buf.Bytes()
 	}
 	return src
 }

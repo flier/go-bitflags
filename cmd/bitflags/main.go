@@ -1,7 +1,9 @@
 // Bitflags is a tool to automate the creation of methods that satisfy the fmt.Stringer
 // interface. Given the name of a (signed or unsigned) integer type T that has constants
 // defined, bitflags will create a new self-contained Go source file implementing
+//
 //	func (t T) String() string
+//
 // The file is created in the same package and directory as the package that defines T.
 // It has helpful defaults designed for use with go generate.
 //
@@ -95,25 +97,14 @@ type config struct {
 }
 
 const (
-	prog    = "bitflags"
-	author  = "Flier Lu <flier.lu@gmail.com>"
-	repo    = "https://github.com/flier/go-bitflags"
-	summary = `
-    {{ .Name }} [flags] -type T [directory]
-    {{ .Name }} [flags] -type T files... # Must be a single package
-
-For more information, see:
-
-    https://github.com/flier/go-bitflags/cmd/bitflags`
+	prog   = "bitflags"
+	author = "Flier Lu <flier.lu@gmail.com>"
+	repo   = "https://github.com/flier/go-bitflags"
 )
 
 func main() {
-	var b strings.Builder
-	template.Must(template.New("summary").Parse(summary)).Execute(&b, map[string]interface{}{"Name": prog})
-	summary := strings.TrimRight(b.String(), "\n")
-
 	c := config{}
-	opts.New(&c).Author(author).Summary(summary).Repo(repo).Parse()
+	opts.New(&c).Summary(summary()).Repo(repo).Author(author).Parse()
 
 	g := gen.New(c.TrimPrefix, c.LineComment)
 
@@ -163,6 +154,15 @@ func main() {
 			log.Fatalf("writing output: %s", err)
 		}
 	}
+}
+
+func summary() string {
+	var b strings.Builder
+	template.Must(template.New("summary").Parse(`
+    {{ .Name }} [flags] -type T [directory]
+    {{ .Name }} [flags] -type T files... # Must be a single package
+`)).Execute(&b, map[string]interface{}{"Name": prog})
+	return strings.Trim(b.String(), "\n")
 }
 
 func isDirectory(name string) bool {
