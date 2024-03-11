@@ -4,8 +4,8 @@ go 1.18
 
 require (
 	github.com/jpillora/opts v1.2.3
-	golang.org/x/mod v0.15.0
-	golang.org/x/tools v0.18.0
+	golang.org/x/mod v0.16.0
+	golang.org/x/tools v0.19.0
 )
 
 require (
